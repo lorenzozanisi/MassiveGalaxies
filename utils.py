@@ -68,7 +68,7 @@ def get_Rh(halos, redshift,mdef='vir'):
     rhalo = mass_so.M_to_R(halonew,redshift,mdef=mdef)/cosmol.h  
     return rhalo
     
-def get_sizefunction(halos, redshift, V,A_K, sigma_K, stars, masslow,massup,model='K13',sigmaK_evo=False, mdef='vir', bins=np.arange(-2,3,0.05)):
+def get_sizefunction(halos, redshift, V,A_K, sigma_K, stars, masslow,massup,model='K13',sigmaK_evo=False, mdef='vir', bins=np.arange(-2,3,0.05), Type='Re'):
     rhalo = get_Rh(halos, redshift, mdef=mdef)
 
     if model=='K13':
@@ -82,17 +82,52 @@ def get_sizefunction(halos, redshift, V,A_K, sigma_K, stars, masslow,massup,mode
         
     mask = np.ma.masked_inside(stars, masslow, massup).mask
     Re = Re[mask]
+    stars = stars[mask]
     occupation_distr = halos[mask]
     binwidth = bins[1]-bins[0]
-  #  bins = np.arange(-2,3,binwidth)
-    try:
-        hist = np.histogram(Re, bins=bins)[0]
-        return occupation_distr, Re,np.array([bins[1:]-0.5*binwidth, hist/V/(binwidth)])
-    except:
-        m = (masslow+massup)/2
-        print('Could not compute size function for mass='+str(m)+'and z='+str(redshift))
-        return 0,0,np.zeros(len(bins)-1)
-    
+
+    if Type=='Cassata' or Type=='Re':
+        
+        try:
+            hist = np.histogram(Re, bins=bins)[0]
+            return occupation_distr, Re,np.array([bins[1:]-0.5*binwidth, hist/V/(binwidth)])
+        except:
+            m = (masslow+massup)/2
+            print('Could not compute size function for mass='+str(m)+'and z='+str(redshift))
+            return 0,0,np.zeros(len(bins)-1)
+        
+    elif Type=='Gargiulo':
+        
+        Sigma = stars-2*Re-np.log10(2*np.pi) - 6 # -6 to convert from pc^-2 to kpc^-2
+        try:
+            hist = np.histogram(Sigma, bins=bins)[0] #Gargiulo definition of compacntess, Mstar/(2pi*R^2)>2000 msun/pc^2
+            return occupation_distr,Sigma,np.array([bins[1:]-0.5*binwidth, hist/V/(binwidth)])
+        except:
+            m = (masslow+massup)/2
+            print('Could not compute size function for mass='+str(m)+'and z='+str(redshift))
+            return 0,0,np.zeros(len(bins)-1)
+        
+    elif Type=='vanDerWel':
+        
+        gamma = Re-0.75*(stars-11)
+        try:
+            hist = np.histogram(gamma, bins=bins)[0]
+            return occupation_distr, gamma,np.array([bins[1:]-0.5*binwidth, hist/V/(binwidth)])
+        except:
+            m = (masslow+massup)/2
+            print('Could not compute size function for mass='+str(m)+'and z='+str(redshift))
+            return 0,0,np.zeros(len(bins)-1)
+        
+    elif Type=='Barro':
+        
+        Sigma = stars-1.5*Re
+        try:
+            hist = np.histogram(Sigma, bins=bins)[0] #Barro definition of compacntess, Mstar/(R^1.5)>10^10.3 
+            return occupation_distr,Sigma,np.array([bins[1:]-0.5*binwidth, hist/V/(binwidth)])
+        except:
+            m = (masslow+massup)/2
+            print('Could not compute size function for mass='+str(m)+'and z='+str(redshift))
+            return 0,0,np.zeros(len(bins)-1)
     
 def get_SigmaGargiulofunction(halos, redshift, V,A_K, sigma_K, stars, masslow,massup,model='K13',sigmaK_evo=False, mdef='vir', bins=np.arange(2,5,0.05)):
     rhalo = get_Rh(halos, redshift, mdef=mdef)
